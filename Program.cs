@@ -14,6 +14,22 @@ namespace StreamerBotUpdater
     {
         static async Task Main()
         {
+            Console.Title = "Streamer.Bot Updater";
+            bool isCurDirDownloads = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile).ToString(), "Downloads") == Directory.GetCurrentDirectory();
+            if (isCurDirDownloads)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("ERROR: Don't have your Streamer.Bot in the Downloads folder... Updater will close!");
+                Console.ReadLine();
+                Environment.Exit(0);
+            }
+            Console.ForegroundColor = ConsoleColor.White;
+            Process process = null;
+            bool sbRunning = Process.GetProcessesByName("Streamer.bot").Length > 0;
+            if (sbRunning)
+            {
+                process = Process.GetProcessesByName("Streamer.bot")[0];
+            }
             string path = Directory.GetCurrentDirectory();
             Console.WriteLine("Welcome!");
             GitHubClient client = new GitHubClient(new ProductHeaderValue("StreamerBotUpdater"));
@@ -33,6 +49,11 @@ namespace StreamerBotUpdater
                 Console.WriteLine($"Streamer.Bot is already the latest version: {sbVersion}");
                 Environment.Exit(0);
             }
+            if (sbRunning && process != null) 
+            {
+                Console.WriteLine("Streamer.Bot is running... The updater will wait till it's close with continuing!");
+                process.WaitForExit(); 
+            }
             Console.WriteLine($"Older version found: {sbVersion}. The latest version is {latestVersion}!");
             Console.WriteLine("Backing up old files...");
             string backupPath = Path.Combine(path, "OldVer_Backup");
@@ -44,9 +65,13 @@ namespace StreamerBotUpdater
             {
                 Directory.Delete(backupPath, true);
             }
+            Directory.CreateDirectory(backupPath);
             CopyFilesByExtension(path, backupPath, "*.dll", programDlls);
             File.Copy("streamer.bot.png", Path.Combine(backupPath, "streamer.bot.png"), false);
-            File.Copy("streamer.bot.pdb", Path.Combine(backupPath, "streamer.bot.pdb"), false);
+            if (File.Exists(Path.Combine(path, "streamer.bot.pdb")))
+            {
+                File.Copy("streamer.bot.pdb", Path.Combine(backupPath, "streamer.bot.pdb"), false);
+            }
             File.Copy("streamer.bot.exe.config", Path.Combine(backupPath, "streamer.bot.exe.config"), false);
             File.Copy("streamer.bot.exe", Path.Combine(backupPath, "streamer.bot.exe"), false);            
             using (WebClient wc = new WebClient())
@@ -72,9 +97,9 @@ namespace StreamerBotUpdater
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex.ToString());
+                    Console.ReadKey();
                 }
-            }            
-            Console.ReadKey();
+            }
         }
         //static private void CopyFilesByExtension(string path, string destPath, string fileExtension, bool ow = true)
         //{
